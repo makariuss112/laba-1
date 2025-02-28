@@ -1,146 +1,241 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include <limits.h>
 
-void write_numbers_to_file(const char *filename) {
-    FILE *file = fopen(filename, "wb");
-    if (!file) {
-        perror("Ошибка при открытии файла");
-        exit(EXIT_FAILURE);
-    }
-    
-    int num, count = 0;
-    printf("Введите целые числа (0 для завершения ввода):\n");
-    while (1) {
-        scanf("%d", &num);
-        if (num == 0) break;
-        fwrite(&num, sizeof(int), 1, file);
-        count++;
-    }
-    fclose(file);
-}
+int main()
+{
+    int number, numSum = 0, numCount = 0, maxNum = INT_MIN, minNum = INT_MAX, counter = 0, minNumIndex = 0, maxNumIndex = 0;
+    float average = 0;
+    FILE *file, *tempFile;
+    char filename[100];
 
-void read_numbers_from_file(const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) {
-        perror("Ошибка при открытии файла");
-        exit(EXIT_FAILURE);
-    }
-    
-    int num;
-    printf("Содержимое файла:\n");
-    while (fread(&num, sizeof(int), 1, file)) {
-        printf("%d ", num);
-    }
-    printf("\n");
-    fclose(file);
-}
+    printf("Enter the filename (without extension): ");
+    fgets(filename, sizeof(filename), stdin);
+    filename[strcspn(filename, "\n")] = '\0';
+    strcat(filename, ".bin"); // объединение строк название файла и .bin
 
-void calculate_sports_score(const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) {
-        perror("Ошибка при открытии файла");
-        exit(EXIT_FAILURE);
+    file = fopen(filename, "wb");
+    if (file == NULL)
+    {
+        printf("Error opening file for writing.\n");
+        return 1;
     }
-    
-    int num, min = INT_MAX, max = INT_MIN, sum = 0, count = 0;
-    while (fread(&num, sizeof(int), 1, file)) {
-        if (num < min) min = num;
-        if (num > max) max = num;
-        sum += num;
-        count++;
-    }
-    fclose(file);
-    
-    if (count <= 2) {
-        printf("Недостаточно данных для вычисления балла спортсмена.\n");
-        return;
-    }
-    
-    double avg = (double)(sum - min - max) / (count - 2);
-    printf("Средний балл спортсмена: %.2f\n", avg);
-}
-
-void swap_min_max(const char *filename) {
-    FILE *file = fopen(filename, "r+b");
-    if (!file) {
-        perror("Ошибка при открытии файла");
-        exit(EXIT_FAILURE);
-    }
-    
-    int num, min = INT_MAX, max = INT_MIN;
-    long min_pos = -1, max_pos = -1, pos = 0;
-    while (fread(&num, sizeof(int), 1, file)) {
-        if (num < min) {
-            min = num;
-            min_pos = pos;
+    printf("Enter integers. To complete, enter any character (except a number).\n");
+    while (1)
+    {
+        if (scanf("%d", &number) == 1)
+        {
+            fwrite(&number, sizeof(int), 1, file);
         }
-        if (num > max) {
-            max = num;
-            max_pos = pos;
+        else
+        {
+            while (getchar() != '\n')
+                ;
+            break;
         }
-        pos++;
     }
-    
-    if (min_pos != -1 && max_pos != -1) {
-        fseek(file, min_pos * sizeof(int), SEEK_SET);
-        fwrite(&max, sizeof(int), 1, file);
-        
-        fseek(file, max_pos * sizeof(int), SEEK_SET);
-        fwrite(&min, sizeof(int), 1, file);
-    }
-    
     fclose(file);
-}
 
-void sort_numbers_in_file(const char *filename) {
-    FILE *file = fopen(filename, "r+b");
-    if (!file) {
-        perror("Ошибка при открытии файла");
-        exit(EXIT_FAILURE);
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading.\n");
+        return 1;
     }
-    
-    int num1, num2, swapped;
-    long count = 0;
-    fseek(file, 0, SEEK_END);
-    count = ftell(file) / sizeof(int);
-    
-    for (long i = 0; i < count - 1; i++) {
+
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        if (number <= minNum)
+        {
+            minNum = number;
+            minNumIndex = counter;
+        }
+
+        if (number >= maxNum)
+        {
+            maxNum = number;
+            maxNumIndex = counter;
+        }
+        counter++;
+    }
+    fclose(file);
+
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading again.\n");
+        return 1;
+    }
+
+    tempFile = fopen("tempFile.bin", "wb");
+    if (tempFile == NULL)
+    {
+        printf("Error opening temporary file for writing.\n");
+        return 1;
+    }
+
+    counter = 0;
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        if (counter != minNumIndex && counter != maxNumIndex)
+        {
+            fwrite(&number, sizeof(int), 1, tempFile);
+        }
+        counter++;
+    }
+
+    fclose(file);
+    fclose(tempFile);
+    remove(filename);
+    rename("tempFile.bin", filename);
+
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading final result.\n");
+        return 1;
+    }
+
+    printf("\nRemaining numbers: ");
+
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        numSum += number;
+        numCount++;
+        printf("%d ", number);
+    }
+    fclose(file);
+    printf("\nSum of elements: %d", numSum);
+
+    if (numCount > 0)
+    {
+        average = (float)numSum / numCount;
+        printf("\nAverage of remaining elements: %.2f\n", average);
+    }
+    else
+    {
+        printf("\nNo remaining elements to calculate average.\n");
+    }
+ 
+    maxNum = INT_MIN;
+    minNum = INT_MAX;
+
+    file = fopen(filename, "rb");
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        if (number <= minNum)
+        {
+            minNum = number;
+        }
+
+        if (number >= maxNum)
+        {
+            maxNum = number;
+        }
+        counter++;
+    }
+    fclose(file);
+
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading again.\n");
+        return 1;
+    }
+
+    tempFile = fopen("tempFile.bin", "wb");
+    if (tempFile == NULL)
+    {
+        printf("Error opening temporary file for writing.\n");
+        return 1;
+    }
+
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        if (number == minNum)
+        {
+            fwrite(&maxNum, sizeof(int), 1, tempFile);
+        }
+        else if (number == maxNum)
+        {
+            fwrite(&minNum, sizeof(int), 1, tempFile);
+        }
+        else
+        {
+            fwrite(&number, sizeof(int), 1, tempFile);
+        }
+    }
+    fclose(file);
+    fclose(tempFile);
+    remove(filename);
+    rename("tempFile.bin", filename);
+
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading final result.\n");
+        return 1;
+    }
+
+    printf("\nChanged number of elements: ");
+
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        printf("%d ", number);
+    }
+    fclose(file);
+
+    file = fopen(filename, "rb+");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading and writing.\n");
+        return 1;
+    }
+
+    int swapped;
+    do
+    {
         swapped = 0;
-        for (long j = 0; j < count - i - 1; j++) {
-            fseek(file, j * sizeof(int), SEEK_SET);
-            fread(&num1, sizeof(int), 1, file);
-            fread(&num2, sizeof(int), 1, file);
-            
-            if (num1 > num2) {
-                fseek(file, j * sizeof(int), SEEK_SET);
-                fwrite(&num2, sizeof(int), 1, file);
-                fwrite(&num1, sizeof(int), 1, file);
+        fseek(file, 0, SEEK_SET);
+
+        // Чтение и сравнение чисел
+        for (int i = 0; i < numCount - 1; i++)
+        {
+            fseek(file, i * sizeof(int), SEEK_SET);
+            fread(&number, sizeof(int), 1, file);
+            int current = number;
+
+            fseek(file, (i + 1) * sizeof(int), SEEK_SET);
+            int next;
+            fread(&next, sizeof(int), 1, file);
+
+            // Сравнение и замена
+            if (current > next)
+            {
+                fseek(file, i * sizeof(int), SEEK_SET);
+                fwrite(&next, sizeof(int), 1, file);
+                fwrite(&current, sizeof(int), 1, file);
                 swapped = 1;
             }
         }
-        if (!swapped) break;
-    }
-    
-    fclose(file);
-}
+    } while (swapped);
 
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Использование: %s <имя файла>\n", argv[0]);
-        return EXIT_FAILURE;
+    fclose(file);
+
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading final result.\n");
+        return 1;
     }
-    
-    const char *filename = argv[1];
-    write_numbers_to_file(filename);
-    read_numbers_from_file(filename);
-    calculate_sports_score(filename);
-    swap_min_max(filename);
-    printf("После замены минимальных и максимальных элементов:\n");
-    read_numbers_from_file(filename);
-    sort_numbers_in_file(filename);
-    printf("После сортировки:\n");
-    read_numbers_from_file(filename);
-    
-    return EXIT_SUCCESS;
+
+    printf("\nSorteded elements: ");
+    while (fread(&number, sizeof(int), 1, file) == 1)
+    {
+        printf("%d ", number);
+    }
+    fclose(file);
+
+    getchar();
+    return 0;
 }
